@@ -9,10 +9,10 @@
   * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
   */
@@ -28,7 +28,12 @@ extern "C" {
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+  extern CAN_FilterTypeDef canFilter1;
+  extern CAN_RxHeaderTypeDef canRxHeader;
+  extern CAN_TxHeaderTypeDef canTxHeader;
+  extern uint8_t can1Rx0Data[8];
+  extern uint32_t TxMailBox;
+  extern uint8_t can1Tx0Data[8];
 /* USER CODE END Includes */
 
 extern CAN_HandleTypeDef hcan;

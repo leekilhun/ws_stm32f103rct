@@ -1,34 +1,34 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "can.h"
 #include "rtc.h"
 #include "spi.h"
 #include "usart.h"
-#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usbd_cdc_if.h"
+//#include "usbd_cdc_if.h"
 #include "tickTimer.h"
 
 #include "stdio.h"
@@ -42,6 +42,10 @@ uint8_t runTimer;
 uint8_t rec_data;
 uint8_t rx_buf[256];
 
+uint8_t sw1_flag = 0;
+uint8_t sw2_flag = 0;
+
+uint8_t can_rx0_flag = 0;
 
 /*
 extern CAN_HandleTypeDef     hcan;
@@ -57,11 +61,11 @@ uint32_t              TxMailbox;*/
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #ifdef __GNUC__
-  /* With GCC, small printf (option LD Linker->Libraries->Small printf
+/* With GCC, small printf (option LD Linker->Libraries->Small printf
      set to 'Yes') calls __io_putchar() */
-  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
-  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
 /* USER CODE END PTD */
 
@@ -77,8 +81,8 @@ uint32_t              TxMailbox;*/
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
-extern uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
+//extern uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
+//extern uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE END PV */
 
@@ -139,9 +143,10 @@ int main(void)
   MX_GPIO_Init();
   MX_RTC_Init();
   MX_SPI1_Init();
-  MX_USB_DEVICE_Init();
   MX_USART1_UART_Init();
   MX_CAN_Init();
+  MX_ADC1_Init();
+  MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_SET); // LED OFF
@@ -151,6 +156,21 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart1, &rec_data, 1);
 
+  canFilter1.FilterMaskIdHigh     = 0x7f3 << 5;
+  canFilter1.FilterIdHigh         = 0x106 << 5;
+  canFilter1.FilterMaskIdLow      = 0x7f3 << 5;
+  canFilter1.FilterIdLow          = 0x106 << 5;
+  canFilter1.FilterMode           = CAN_FILTERMODE_IDMASK;
+  canFilter1.FilterScale          = CAN_FILTERSCALE_16BIT;
+  canFilter1.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+  canFilter1.FilterBank           = 0;
+  canFilter1.FilterActivation     = ENABLE;
+
+  HAL_CAN_ConfigFilter(&hcan, &canFilter1);
+  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
+
+
+  HAL_CAN_Start(&hcan);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -160,6 +180,7 @@ int main(void)
   while (1)
   {
 
+#if 0  //USB
     uint16_t len = strlen((const char*)UserRxBufferFS);
 
     if(len > 0)
@@ -170,12 +191,48 @@ int main(void)
       memset(UserRxBufferFS, 0, sizeof(UserRxBufferFS));
       memset(UserTxBufferFS, 0, sizeof(UserTxBufferFS));
     }
-
+#endif
     if (tickTimer_MoreThan(runTimer, 1000))
     {
       runTimer = tickTimer_Start();
       HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_8);
     }
+
+
+    if (can_rx0_flag)
+    {
+      can_rx0_flag = 0;
+    }
+#if 0
+    if (sw1_flag)
+    {
+      sw1_flag = 0;
+      canTxHeader.StdId = 0x102;
+      canTxHeader.RTR = CAN_RTR_DATA;
+      canTxHeader.IDE = CAN_ID_STD;
+      canTxHeader.DLC = 8;
+
+      for(int i=0; i<8;1++) can1Tx0Data[i]++;
+
+      TxMailBox = HAL_CAN_GetTxMailboxesFreeLevel(&hcan);
+      HAL_CAN_AddTxMessage(&hcan, &canTxHeader, &can1Tx0Data[0], &TxMailbox);
+
+    }
+    if (sw2_flag)
+    {
+      sw2_flag = 0;
+      canTxHeader.StdId = 0x106;
+      canTxHeader.RTR = CAN_RTR_DATA;
+      canTxHeader.IDE = CAN_ID_STD;
+      canTxHeader.DLC = 8;
+
+      for(int i=0; i<8;1++) can1Tx0Data[i]++;
+
+      TxMailBox = HAL_CAN_GetTxMailboxesFreeLevel(&hcan);
+      HAL_CAN_AddTxMessage(&hcan, &canTxHeader, &can1Tx0Data[0], &TxMailbox);
+
+    }
+#endif
 
     /* USER CODE END WHILE */
 
@@ -244,14 +301,27 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL_DIV_1_5);
+  LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSRC_PCLK2_DIV_6);
 }
 
 /* USER CODE BEGIN 4 */
 
+
+void HAL_CAL_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  if(hcan->Instance == CAN1)
+  {
+    HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &canRxHeader, &can1Rx0Data[0]);
+    can_rx0_flag = 1;
+  }
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-  /*HAL_UART_Transmit(&huart2, (uint8_t *)&rec_data, 1, 0xFFFF);*/
+
+  //uartPrintf(_DEF_UART1, "Uart1 Rx %c %x\n",rx_data,rx_data);
+  printf("Uart1 Rx %c %x\n",rec_data,rec_data);
+  //HAL_UART_Transmit(&huart1, (uint8_t *)&rec_data, 1, 0xFFFF);
   HAL_UART_Receive_IT(&huart1, &rec_data, 1);
   //HAL_UART_Receive_DMA(&huart2,&rec_data,256);
 }

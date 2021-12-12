@@ -22,7 +22,7 @@ bool hwInit(void)
   ret &= buttonInit();
   ret &= flashInit();
 
-  ret &= usbInit();
+  //ret &= usbInit();
   ret &= uartInit();
 
   ret &= cliInit();
@@ -31,8 +31,8 @@ bool hwInit(void)
   //ret &= logInit();
 
   //ret &= spiInit();
-//  ret &= i2cInit();
- // ret &= canInit();
-  usbBegin(USB_CDC_MODE);
+  //ret &= i2cInit();
+  ret &= canInit();
+  //usbBegin(USB_CDC_MODE);
   return ret;
 }

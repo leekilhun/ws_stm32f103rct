@@ -30,9 +30,6 @@ typedef enum
   CAN_250K,
   CAN_500K,
   CAN_1M,
-  CAN_2M,
-  CAN_4M,
-  CAN_5M
 } can_baud_t;
 
 typedef enum
@@ -66,14 +63,18 @@ typedef enum
   CAN_DLC_6,
   CAN_DLC_7,
   CAN_DLC_8,
-  CAN_DLC_12,
-  CAN_DLC_16,
-  CAN_DLC_20,
-  CAN_DLC_24,
-  CAN_DLC_32,
-  CAN_DLC_48,
-  CAN_DLC_64
 } can_dlc_t;
+
+typedef enum
+{
+  CAN_LAST_ERR_NONE,
+  CAN_LAST_ERR_STUFF,
+  CAN_LAST_ERR_FORM,
+  CAN_LAST_ERR_ACK,
+  CAN_LAST_ERR_BIT_RECESSIVE,
+  CAN_LAST_ERR_BIT_DOMINANT,
+  CAN_LAST_ERR_CRC,
+} can_last_err_t;
 
 typedef enum
 {
@@ -90,7 +91,7 @@ typedef struct
 {
   uint32_t id;
   uint16_t length;
-  uint8_t  data[64];
+  uint8_t  data[8];
 
   can_dlc_t      dlc;
   can_id_type_t  id_type;

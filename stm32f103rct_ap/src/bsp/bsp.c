@@ -9,7 +9,7 @@
 
 
 #include "bsp.h"
-
+//#include "usb.h"
 
 
 void SystemClock_Config(void);
@@ -50,7 +50,7 @@ uint32_t millis(void)
 
 void bspDeInit(void)
 {
-  usbDeInit();
+  //usbDeInit();
   HAL_RCC_DeInit();
 
   // Disable Interrupts
@@ -79,19 +79,22 @@ void SystemClock_Config(void)
   {
 
   }
-  LL_RCC_LSI_Enable();
-
-  /* Wait till LSI is ready */
-  while(LL_RCC_LSI_IsReady() != 1)
-  {
-
-  }
   LL_PWR_EnableBkUpAccess();
-  if(LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_LSI)
+  if(LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_LSE)
   {
     LL_RCC_ForceBackupDomainReset();
     LL_RCC_ReleaseBackupDomainReset();
-    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSI);
+  }
+  LL_RCC_LSE_Enable();
+
+  /* Wait till LSE is ready */
+  while(LL_RCC_LSE_IsReady() != 1)
+  {
+
+  }
+  if(LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_LSE)
+  {
+    LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
   }
   LL_RCC_EnableRTC();
   LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE_DIV_1, LL_RCC_PLL_MUL_9);
@@ -119,7 +122,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL_DIV_1_5);
+  LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSRC_PCLK2_DIV_6);
 }
 
 void Error_Handler(void)

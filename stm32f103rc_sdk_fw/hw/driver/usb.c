@@ -162,12 +162,12 @@ bool usbBegin(UsbMode usb_mode)
 
 
 
-
+#if 0
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   HAL_PCD_IRQHandler(&hpcd_USB_FS);
 }
-
+#endif
 
 #ifdef _USE_HW_CLI
 void cliCmd(cli_args_t *args)

@@ -14,12 +14,17 @@ Button 1 	- KEY0 	(PC1)
 Button 2 	- KEY1 	(PC13)
 
 
-@spi1(slave)
+@spi3(slave)
  #	Name	Function	Connected to
- 1	SCK		-			PA5
- 2	SO		-			PA6
- 3	SI		-			PA7
- 4	CS		input		PA4
+ 1	SCK		-			PB3
+ 2	SO		-			PB4
+ 3	SI		-			PB5
+ 4	CS		input		PB6
+
+@can
+ #	Name	Function	Connected to
+ 1	can_rx	-			PB8
+ 2	can_tx	-			PB9
 
 
 @LCD1602 BLUE

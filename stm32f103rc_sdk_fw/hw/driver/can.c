@@ -10,14 +10,43 @@
 #include "qbuffer.h"
 #include "cli.h"
 
-#include "mcp2515.h"
-
 #ifdef _USE_HW_CAN
 
 
+typedef struct
+{
+  uint32_t prescaler;
+  uint32_t sjw;
+  uint32_t tseg1;
+  uint32_t tseg2;
+} can_baud_cfg_t;
+
+const can_baud_cfg_t can_baud_cfg_80m_normal[] =
+    {
+        {20, 4, 13, 4}, // 100K, 77.7%
+        {16, 4, 13, 4}, // 125K, 77.7%
+        {8,  4, 13, 4}, // 250K, 77.7%
+        {4,  4, 13, 4}, // 500K, 77.7.5%
+        {2,  4, 13, 4}, // 1M,   77.7%
+    };
+
+const can_baud_cfg_t can_baud_cfg_80m_data[] =
+    {
+        {20, 4, 11, 8}, // 100K, 61.1%
+        {16, 4, 11, 8}, // 125K, 61.1%
+        {8,  4, 11, 8}, // 250K, 61.1%
+        {4,  4, 11, 8}, // 500K, 61.1%
+        {2,  4, 10, 7}, // 1M,   61.1%
+    };
 
 
-const uint32_t dlc_len_tbl[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
+const can_baud_cfg_t *p_baud_normal = can_baud_cfg_80m_normal;
+const can_baud_cfg_t *p_baud_data   = can_baud_cfg_80m_data;
+
+
+//CAN_HandleTypeDef hcan;
+
+const uint32_t dlc_len_tbl[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
 
 
@@ -37,12 +66,17 @@ typedef struct
 
   uint32_t fifo_idx;
   uint32_t enable_int;
+  uint32_t interrrupt_line;
+
   can_mode_t  mode;
   can_frame_t frame;
   can_baud_t  baud;
   can_baud_t  baud_data;
 
-  uint8_t hfdcan;
+  uint32_t rx_cnt;
+  uint32_t tx_cnt;
+
+  CAN_HandleTypeDef hcan;
   bool (*handler)(can_msg_t *arg);
 
   qbuffer_t q_msg;
@@ -73,21 +107,23 @@ bool canInit(void)
 
   for(i = 0; i < CAN_MAX_CH; i++)
   {
-    can_tbl[i].is_init  = true;
-    can_tbl[i].is_open  = false;
-    can_tbl[i].err_code = CAN_ERR_NONE;
-    can_tbl[i].state    = 0;
-    can_tbl[i].recovery_cnt = 0;
+    can_tbl[i].is_init       = true;
+    can_tbl[i].is_open       = false;
+    can_tbl[i].err_code      = CAN_ERR_NONE;
+    can_tbl[i].state         = 0;
+    can_tbl[i].recovery_cnt  = 0;
 
     can_tbl[i].q_rx_full_cnt = 0;
     can_tbl[i].q_tx_full_cnt = 0;
     can_tbl[i].fifo_full_cnt = 0;
     can_tbl[i].fifo_lost_cnt = 0;
 
+    can_tbl[i].rx_cnt        = 0;
+    can_tbl[i].tx_cnt        = 0;
     qbufferCreateBySize(&can_tbl[i].q_msg, (uint8_t *)&can_tbl[i].can_msg[0], sizeof(can_msg_t), CAN_MSG_RX_BUF_MAX);
+
   }
 
-  mcp2515Init();
 
 #ifdef _USE_HW_CLI
   cliAdd("can", cliCan);
@@ -100,19 +136,37 @@ bool canOpen(uint8_t ch, can_mode_t mode, can_frame_t frame, can_baud_t baud, ca
   bool ret = true;
 
   if (ch >= CAN_MAX_CH) return false;
+  CAN_HandleTypeDef  *p_can;
+  //uint32_t tdc_offset;
 
+  p_can = &can_tbl[ch].hcan;
   switch(ch)
   {
     case _DEF_CAN1:
-      can_tbl[ch].hfdcan                = 0;
+      /* CAN_Init 0 */
+      p_can->Instance                   = CAN1;
+      p_can->Init.Prescaler             = 4;
+      p_can->Init.Mode                  = CAN_MODE_LOOPBACK;
+      p_can->Init.SyncJumpWidth         = CAN_SJW_4TQ;
+      p_can->Init.TimeSeg1              = CAN_BS1_13TQ;
+      p_can->Init.TimeSeg2              = CAN_BS2_4TQ;
+      p_can->Init.TimeTriggeredMode     = DISABLE;
+      p_can->Init.AutoBusOff            = DISABLE;
+      p_can->Init.AutoWakeUp            = DISABLE;
+      p_can->Init.AutoRetransmission    = ENABLE;
+      p_can->Init.ReceiveFifoLocked     = DISABLE;
+      p_can->Init.TransmitFifoPriority  = DISABLE;
+
       can_tbl[ch].mode                  = mode;
       can_tbl[ch].frame                 = frame;
       can_tbl[ch].baud                  = baud;
       can_tbl[ch].baud_data             = baud_data;
-      can_tbl[ch].fifo_idx              = 0;
-      can_tbl[ch].enable_int            = 0;
+      can_tbl[ch].fifo_idx              = CAN_RX_FIFO0;
 
-      mcp2515SetBaud(can_tbl[ch].hfdcan, (McpBaud)baud);
+      if (HAL_CAN_Init(p_can) != HAL_OK)
+      {
+        Error_Handler();
+      }
       ret = true;
       break;
   }
@@ -125,6 +179,15 @@ bool canOpen(uint8_t ch, can_mode_t mode, can_frame_t frame, can_baud_t baud, ca
 
   canConfigFilter(ch, 0, CAN_STD, 0x0000, 0x0000);
   canConfigFilter(ch, 0, CAN_EXT, 0x0000, 0x0000);
+
+
+
+  if (HAL_CAN_Start(p_can) != HAL_OK)
+  {
+    return false;
+  }
+
+
 
 
   can_tbl[ch].is_open = true;
@@ -140,17 +203,35 @@ void canClose(uint8_t ch)
 bool canConfigFilter(uint8_t ch, uint8_t index, can_id_type_t id_type, uint32_t id, uint32_t id_mask)
 {
   bool ret = false;
-
+  CAN_FilterTypeDef sFilterConfig;
 
   if (ch >= CAN_MAX_CH) return false;
 
-
   if (id_type == CAN_STD)
   {
+    sFilterConfig.FilterScale = CAN_FILTERSCALE_16BIT;
+
   }
   else
   {
+    sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
   }
+
+  sFilterConfig.FilterMaskIdHigh     = id_mask;
+  sFilterConfig.FilterIdHigh         = id;
+  sFilterConfig.FilterMaskIdLow      = id_mask;
+  sFilterConfig.FilterIdLow          = id;
+  sFilterConfig.FilterMode           = CAN_FILTERMODE_IDMASK;
+  sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+  sFilterConfig.FilterBank           = index;
+  sFilterConfig.FilterActivation     = ENABLE;
+
+  if (HAL_CAN_ConfigFilter(&can_tbl[ch].hcan, &sFilterConfig) == HAL_OK)
+  {
+    HAL_CAN_ActivateNotification(&can_tbl[ch].hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
+    ret = true;
+  }
+
 
   return ret;
 }
@@ -173,9 +254,18 @@ bool canMsgInit(can_msg_t *p_msg, can_frame_t frame, can_id_type_t  id_type, can
 
 bool canMsgWrite(uint8_t ch, can_msg_t *p_msg, uint32_t timeout)
 {
-  mcp_msg_t msg;
+  CAN_HandleTypeDef  *p_can;
+  CAN_TxHeaderTypeDef tx_header;
+  //uint32_t pre_time;
   bool ret = true;
 
+
+  if(ch > CAN_MAX_CH) return false;
+
+  if (can_tbl[ch].err_code & CAN_ERR_BUS_OFF) return false;
+
+
+  p_can = &can_tbl[ch].hcan;
 
   if(ch > CAN_MAX_CH) return false;
 
@@ -185,11 +275,11 @@ bool canMsgWrite(uint8_t ch, can_msg_t *p_msg, uint32_t timeout)
   switch(p_msg->id_type)
   {
     case CAN_STD :
-      msg.ext = false;
+      tx_header.IDE = CAN_ID_STD;
       break;
 
     case CAN_EXT :
-      msg.ext = true;
+      tx_header.IDE = CAN_ID_EXT;
       break;
   }
 
@@ -205,20 +295,30 @@ bool canMsgWrite(uint8_t ch, can_msg_t *p_msg, uint32_t timeout)
       break;
   }
 
-  msg.id  = p_msg->id;
-  msg.ext = true;
-  msg.dlc = dlc_len_tbl[p_msg->dlc];
+  tx_header.StdId = p_msg->id;
+  tx_header.RTR   = CAN_RTR_DATA;
+  tx_header.DLC   = dlc_len_tbl[p_msg->dlc];
 
-  memcpy(msg.data, p_msg->data, dlc_len_tbl[p_msg->dlc]);
 
-  if (mcp2515SendMsg(can_tbl[ch].hfdcan, &msg) == true)
-  {
-    ret = true;
-  }
-  else
-  {
-    ret = false;
-  }
+
+  uint32_t TxMailBox = HAL_CAN_GetTxMailboxesFreeLevel(p_can);
+  HAL_CAN_AddTxMessage(p_can, &tx_header, p_msg->data, &TxMailBox);
+
+
+//  tx_header.id  = p_msg->id;
+//  tx_header.ext = true;
+//  tx_header.dlc = dlc_len_tbl[p_msg->dlc];
+//
+//  memcpy(msg.data, p_msg->data, dlc_len_tbl[p_msg->dlc]);
+//
+//  if (mcp2515SendMsg(can_tbl[ch].hfdcan, &msg) == true)
+//  {
+//    ret = true;
+//  }
+//  else
+//  {
+//    ret = false;
+//  }
 
   return ret;
 }
@@ -230,7 +330,7 @@ bool canMsgRead(uint8_t ch, can_msg_t *p_msg)
 
   if(ch > CAN_MAX_CH) return 0;
 
-  ret = qbufferRead(&can_tbl[ch].q_msg, (uint8_t *)p_msg, 1);
+  ret = qbufferRead(&can_tbl[ch].q_msg, (uint8_t *)p_msg->data, 1);
 
   return ret;
 }
@@ -238,35 +338,42 @@ bool canMsgRead(uint8_t ch, can_msg_t *p_msg)
 uint16_t canGetRxErrCount(uint8_t ch)
 {
   uint16_t ret = 0;
-
   if(ch > CAN_MAX_CH) return 0;
 
-  ret = mcp2515GetRxErrCount(ch);
+  ret = can_tbl[ch].hcan.Instance->ESR>>24; //mcp2515GetRxErrCount(ch);
   return ret;
 }
 
 uint16_t canGetTxErrCount(uint8_t ch)
 {
   uint16_t ret = 0;
-
   if(ch > CAN_MAX_CH) return 0;
 
-  ret = mcp2515GetTxErrCount(ch);
+  ret = can_tbl[ch].hcan.Instance->ESR>>16 & 0x00ff;  // = mcp2515GetTxErrCount(ch);
   return ret;
 }
 
 uint32_t canGetError(uint8_t ch)
 {
   if(ch > CAN_MAX_CH) return 0;
-
-  return mcp2515ReadErrorFlags(can_tbl[ch].hfdcan);
+  //mcp2515ReadErrorFlags(can_tbl[ch].hfdcan);
+  return (uint16_t)HAL_CAN_GetError(&can_tbl[ch].hcan);
 }
 
+/*
+HAL_CAN_STATE_RESET             = 0x00U,  !< CAN not yet initialized or disabled /
+HAL_CAN_STATE_READY             = 0x01U,  !< CAN initialized and ready for use   /
+HAL_CAN_STATE_LISTENING         = 0x02U,  !< CAN receive process is ongoing      /
+HAL_CAN_STATE_SLEEP_PENDING     = 0x03U,  !< CAN sleep request is pending        /
+HAL_CAN_STATE_SLEEP_ACTIVE      = 0x04U,  !< CAN sleep mode is active            /
+HAL_CAN_STATE_ERROR             = 0x05U   !< CAN error state
+*/
 uint32_t canGetState(uint8_t ch)
 {
   if(ch > CAN_MAX_CH) return 0;
+  HAL_CAN_StateTypeDef state= HAL_CAN_GetState(&can_tbl[ch].hcan);
 
-  return 0;
+  return (uint32_t)state;
 }
 
 void canAttachRxInterrupt(uint8_t ch, bool (*handler)(can_msg_t *arg))
@@ -286,6 +393,9 @@ void canDetachRxInterrupt(uint8_t ch)
 void canRecovery(uint8_t ch)
 {
   if(ch > CAN_MAX_CH) return;
+
+  HAL_CAN_Stop(&can_tbl[ch].hcan);
+  HAL_CAN_Start(&can_tbl[ch].hcan);
 
   can_tbl[ch].recovery_cnt++;
 }
@@ -329,37 +439,42 @@ bool canUpdate(void)
 void canRxFifoUpdate(uint8_t ch)
 {
   can_msg_t *rx_buf;
-  mcp_msg_t rx_msg;
+  CAN_RxHeaderTypeDef rx_header;
 
-  if (mcp2515ReadMsg(can_tbl[ch].hfdcan, &rx_msg) != true)
-  {
-    return;
-  }
 
   rx_buf  = (can_msg_t *)qbufferPeekWrite(&can_tbl[ch].q_msg);
 
-  rx_buf->id = rx_msg.id;
-
-  if(rx_msg.ext != true)
-    rx_buf->id_type = CAN_STD;
-  else
-    rx_buf->id_type = CAN_EXT;
-
-  rx_buf->length = dlc_len_tbl[rx_msg.dlc];
-  rx_buf->frame = CAN_CLASSIC;
-
-  if (qbufferWrite(&can_tbl[ch].q_msg, NULL, 1) != true)
+  if (HAL_CAN_GetRxMessage(&can_tbl[ch].hcan, can_tbl[ch].fifo_idx, &rx_header, rx_buf->data) == HAL_OK)
   {
-    can_tbl[ch].q_rx_full_cnt++;
-  }
-
-  if( can_tbl[ch].handler != NULL )
-  {
-    if ((*can_tbl[ch].handler)((void *)rx_buf) == true)
+    if(rx_header.IDE == CAN_STD)
     {
-      qbufferRead(&can_tbl[ch].q_msg, NULL, 1);
+      rx_buf->id      = rx_header.StdId;
+      rx_buf->id_type = CAN_STD;
+    }
+    else
+    {
+      rx_buf->id      = rx_header.ExtId;
+      rx_buf->id_type = CAN_EXT;
+    }
+    rx_buf->length = dlc_len_tbl[(rx_header.DLC >> 16) & 0x0F];
+    rx_buf->frame = CAN_CLASSIC;
+
+    can_tbl[ch].rx_cnt++;
+
+    if (qbufferWrite(&can_tbl[ch].q_msg, NULL, 1) != true)
+    {
+      can_tbl[ch].q_rx_full_cnt++;
+    }
+
+    if( can_tbl[ch].handler != NULL )
+    {
+      if ((*can_tbl[ch].handler)((void *)rx_buf) == true)
+      {
+        qbufferRead(&can_tbl[ch].q_msg, NULL, 1);
+      }
     }
   }
+
 }
 
 void canErrClear(uint8_t ch)
@@ -385,43 +500,96 @@ void canErrPrint(uint8_t ch)
 
 void canErrUpdate(uint8_t ch)
 {
-  uint8_t protocol_status;
-
-
-  protocol_status = mcp2515ReadErrorFlags(can_tbl[ch].hfdcan);
-
-  if (protocol_status & (1<<3) || protocol_status & (1<<4))
-  {
-    can_tbl[ch].err_code |= CAN_ERR_PASSIVE;
-  }
-  else
-  {
-    can_tbl[ch].err_code &= ~CAN_ERR_PASSIVE;
-  }
-
-  if (protocol_status & (1<<0))
-  {
-    can_tbl[ch].err_code |= CAN_ERR_WARNING;
-  }
-  else
-  {
-    can_tbl[ch].err_code &= ~CAN_ERR_WARNING;
-  }
-
-  if (protocol_status & (1<<5))
-  {
-    can_tbl[ch].err_code |= CAN_ERR_BUS_OFF;
-  }
-  else
-  {
-    can_tbl[ch].err_code &= ~CAN_ERR_BUS_OFF;
-  }
+  uint32_t protocol_status;
+  protocol_status = can_tbl[ch].hcan.Instance->ESR &0x00000007;
+  can_tbl[ch].err_code = protocol_status ;
 
   if (protocol_status & (1<<6))
   {
     can_tbl[ch].fifo_full_cnt++;
   }
+
 }
+
+
+
+/**
+ * @brief This function handles USB low priority or CAN RX0 interrupts.
+ */
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  HAL_CAN_IRQHandler(&can_tbl[_DEF_CAN1].hcan);
+}
+
+
+
+void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(canHandle->Instance==CAN1)
+  {
+    /* CAN1 clock enable */
+    __HAL_RCC_CAN1_CLK_ENABLE();
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**CAN GPIO Configuration
+    PB8     ------> CAN_RX
+    PB9     ------> CAN_TX
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    __HAL_AFIO_REMAP_CAN1_2();
+
+    /* CAN1 interrupt Init */
+    HAL_NVIC_SetPriority(USB_HP_CAN1_TX_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USB_HP_CAN1_TX_IRQn);
+    HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+    HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_SetPriority(CAN1_SCE_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_SCE_IRQn);
+  }
+}
+
+void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
+{
+
+  if(canHandle->Instance==CAN1)
+  {
+    /* Peripheral clock disable */
+    __HAL_RCC_CAN1_CLK_DISABLE();
+
+    /**CAN GPIO Configuration
+    PB8     ------> CAN_RX
+    PB9     ------> CAN_TX
+    */
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8|GPIO_PIN_9);
+    HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_SCE_IRQn);
+ }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -527,7 +695,7 @@ void cliCan(cli_args_t *args)
         }
         else
         {
-          cliPrintf("err %d \n", mcp2515ReadErrorFlags(can_tbl[_DEF_CAN1].hfdcan));
+          cliPrintf("err %d \n", can_tbl[_DEF_CAN1].err_code/*mcp2515ReadErrorFlags(can_tbl[_DEF_CAN1].hcan*/);
         }
 
 
