@@ -30,7 +30,7 @@ bool hwInit(void)
 
   //ret &= logInit();
 
-  //ret &= spiInit();
+  ret &= spiInit();
   //ret &= i2cInit();
   ret &= canInit();
   //usbBegin(USB_CDC_MODE);
