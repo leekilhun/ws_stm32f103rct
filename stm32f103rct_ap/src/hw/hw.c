@@ -18,17 +18,21 @@ bool hwInit(void)
   ret &= bspInit();
   ret &= rtcInit();
   ret &= resetInit();
+
+  ret &= cliInit();
+
   ret &= ledInit();
   ret &= buttonInit();
   ret &= flashInit();
+  ret &= gpioInit();
 
+  ret &= logInit();
   //ret &= usbInit();
   ret &= uartInit();
+  uartOpen(_DEF_UART1, 115200);
 
-  ret &= cliInit();
-  //ret &= gpioInit();
-
-  //ret &= logInit();
+  logOpen(_DEF_UART1, 115200);
+  logPrintf("\r\n[ Firmware Begin... ]\r\n");
 
   ret &= spiInit();
   //ret &= i2cInit();

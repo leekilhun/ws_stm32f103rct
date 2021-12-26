@@ -17,6 +17,9 @@
 //#define _USE_MODULE_MCP23017
 #define     _MODULE_MCP23017_MAX_CH     1
 
+
+#define _USE_MODULE_W25QXX
+
 //#define _USE_MODULE_LCD
 //#define _USE_MODULE_LCD1306_I2C
 

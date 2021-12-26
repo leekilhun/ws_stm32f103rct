@@ -27,12 +27,7 @@ typedef struct
 
 const gpio_tbl_t gpio_tbl[GPIO_MAX_CH] =
     {
-        {GPIOC, GPIO_PIN_0,  _DEF_INPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW},      // 0. can_interrupt
-        {GPIOC, GPIO_PIN_1,  _DEF_OUTPUT,GPIO_PIN_RESET, GPIO_PIN_SET,   _DEF_LOW},      // 1. can_chip select
-
-        {GPIOA, GPIO_PIN_0,  _DEF_OUTPUT,GPIO_PIN_RESET, GPIO_PIN_SET,   _DEF_LOW},      // 2. external io reset
-        {GPIOA, GPIO_PIN_1,  _DEF_INPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW},      // 3. external io interrupt a
-        {GPIOA, GPIO_PIN_4,  _DEF_INPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW},      // 4. external io interrupt b
+        {GPIOA, GPIO_PIN_2,  _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET,   _DEF_LOW},      // 0. w25q16 ncs
     };
 
 
@@ -49,8 +44,6 @@ bool gpioInit(void)
 
 
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   for (int i=0; i<GPIO_MAX_CH; i++)
   {

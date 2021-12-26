@@ -18,6 +18,7 @@
 
 #include "err_code.h"
 #include "util.h"
+#include "binary.h"
 
 enum uart_type
 {

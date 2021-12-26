@@ -5,6 +5,23 @@
  *      Author: gns2l
  */
 
+/**
+ ******************************************************************************
+ * @file    qbuffer.c
+ * @author  baram
+ * @brief   ring buffer source file.
+ * @version v1.0 (2021.12.14) : debug
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2021 -----------.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is ....
+ *
+ ******************************************************************************
+ */
+
 
 
 #include "qbuffer.h"
@@ -61,9 +78,9 @@ bool qbufferWrite(qbuffer_t *p_node, uint8_t *p_data, uint32_t length)
         uint8_t *p_buf;
 
         p_buf = &p_node->p_buf[p_node->in*p_node->size];
-        for (int i=0; i<p_node->size; i++)
+        for (int j=0; j<p_node->size; j++)
         {
-          p_buf[i] = p_data[i];
+          p_buf[j] = p_data[j];
         }
         p_data += p_node->size;
       }
@@ -91,9 +108,9 @@ bool qbufferRead(qbuffer_t *p_node, uint8_t *p_data, uint32_t length)
       uint8_t *p_buf;
 
       p_buf = &p_node->p_buf[p_node->out*p_node->size];
-      for (int i=0; i<p_node->size; i++)
+      for (int j=0; j<p_node->size; j++)
       {
-        p_data[i] = p_buf[i];
+        p_data[j] = p_buf[j];
       }
 
       p_data += p_node->size;
@@ -129,7 +146,7 @@ uint32_t qbufferAvailable(qbuffer_t *p_node)
   uint32_t ret;
 
 
-  ret = (p_node->in - p_node->out) % p_node->len;
+  ret = (p_node->len + p_node->in - p_node->out) % p_node->len;
 
   return ret;
 }

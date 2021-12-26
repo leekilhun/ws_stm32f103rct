@@ -11,9 +11,13 @@
 #include "module.h"
 
 
-void moduleInit(void)
+bool moduleInit(void)
 {
+  bool ret = false;
 
+  ret =  w25qxx_Init();
 
+  logBoot(false);
 
+  return ret;
 }

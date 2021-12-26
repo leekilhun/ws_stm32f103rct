@@ -9,10 +9,12 @@
 #define SRC_MODULE_MODULE_H_
 
 
-
+#include <w25qxx.h>
 #include "module_def.h"
 
-void moduleInit(void);
+
+
+bool moduleInit(void);
 
 
 #endif /* SRC_MODULE_MODULE_H_ */

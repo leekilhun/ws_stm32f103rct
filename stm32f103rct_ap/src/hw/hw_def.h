@@ -26,13 +26,9 @@
 #define _USE_HW_BUTTON
 #define      HW_BUTTON_MAX_CH       2
 
-//#define _USE_HW_GPIO
-#define      HW_GPIO_MAX_CH         5
-#define        _GPIO_CAN_INTERRUP   0
-#define        _GPIO_CAN_CS         1
-#define        _GPIO_EX_IO_RST      2
-#define        _GPIO_EX_IO_IRT_A    3
-#define        _GPIO_EX_IO_IRT_B    4
+#define _USE_HW_GPIO
+#define      HW_GPIO_MAX_CH         1
+#define        _GPIO_W25Q16_NCS     0
 
 
 //#define _USE_HW_CDC

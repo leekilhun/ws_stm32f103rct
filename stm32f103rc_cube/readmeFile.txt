@@ -69,3 +69,8 @@ Button 2 	- KEY1 	(PC13)
 	6		-		CLK			PA5
 	7		-		/HOLD		+3.3V rail
 	8		-		VCC			+3.3V rail
+	
+	
+참조 https://jyelectronic.tistory.com/54
+	https://github.com/nimaltd/w25qxx/blob/master/w25qxx.c
+ 
