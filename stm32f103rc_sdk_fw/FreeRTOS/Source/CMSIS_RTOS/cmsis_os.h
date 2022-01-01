@@ -26,7 +26,7 @@
  *  
  *----------------------------------------------------------------------------
  *
- * Portions Copyright © 2016 STMicroelectronics International N.V. All rights reserved.
+ * Portions Copyright ï¿½ 2016 STMicroelectronics International N.V. All rights reserved.
  * Portions Copyright (c) 2013 ARM LIMITED
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -422,7 +422,7 @@ const osThreadDef_t os_thread_def_##name = \
 
 #define osThreadDef(name, thread, priority, instances, stacksz)  \
 const osThreadDef_t os_thread_def_##name = \
-{ #name, (thread), (priority), (instances), (stacksz)}
+{ (char*)#name, (thread), (priority), (instances), (stacksz)}
 #endif
 #endif
 
