@@ -35,7 +35,7 @@ typedef enum
 typedef enum
 {
   CAN_NORMAL,
-  CAN_MONITOR,
+  CAN_SILENT,
   CAN_LOOPBACK
 }can_mode_t;
 

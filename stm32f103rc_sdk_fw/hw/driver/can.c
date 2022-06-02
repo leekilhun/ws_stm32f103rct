@@ -21,33 +21,41 @@ typedef struct
   uint32_t tseg2;
 } can_baud_cfg_t;
 
-const can_baud_cfg_t can_baud_cfg_80m_normal[] =
+//stm32f103  APB1 36Mhz
+const can_baud_cfg_t can_baud_cfg_36m_normal[] =
     {
-        {20, 4, 13, 4}, // 100K, 77.7%
-        {16, 4, 13, 4}, // 125K, 77.7%
-        {8,  4, 13, 4}, // 250K, 77.7%
-        {4,  4, 13, 4}, // 500K, 77.7.5%
-        {2,  4, 13, 4}, // 1M,   77.7%
+        {18, CAN_SJW_4TQ, CAN_BS1_15TQ, CAN_BS2_4TQ}, // 100K, 80.0%
+        {16, CAN_SJW_4TQ, CAN_BS1_13TQ, CAN_BS2_4TQ}, // 125K, 77.8%
+        {8,  CAN_SJW_4TQ, CAN_BS1_13TQ, CAN_BS2_4TQ}, // 250K, 77.8%
+        {4,  CAN_SJW_4TQ, CAN_BS1_13TQ, CAN_BS2_4TQ}, // 500K, 77.8%
+        {2,  CAN_SJW_4TQ, CAN_BS1_13TQ, CAN_BS2_4TQ}, // 1M,   77.8%
     };
 
-const can_baud_cfg_t can_baud_cfg_80m_data[] =
+/*const can_baud_cfg_t can_baud_cfg_36m_data[] =
     {
         {20, 4, 11, 8}, // 100K, 61.1%
         {16, 4, 11, 8}, // 125K, 61.1%
         {8,  4, 11, 8}, // 250K, 61.1%
         {4,  4, 11, 8}, // 500K, 61.1%
         {2,  4, 10, 7}, // 1M,   61.1%
-    };
+    };*/
 
 
-const can_baud_cfg_t *p_baud_normal = can_baud_cfg_80m_normal;
-const can_baud_cfg_t *p_baud_data   = can_baud_cfg_80m_data;
+const can_baud_cfg_t *p_baud_normal = can_baud_cfg_36m_normal;
+//const can_baud_cfg_t *p_baud_data   = can_baud_cfg_80m_data;
 
 
 //CAN_HandleTypeDef hcan;
 
 const uint32_t dlc_len_tbl[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
+
+static const uint32_t mode_tbl[] =
+    {
+        CAN_MODE_NORMAL,
+        CAN_MODE_SILENT,
+        CAN_MODE_LOOPBACK
+    };
 
 
 typedef struct
@@ -145,11 +153,11 @@ bool canOpen(uint8_t ch, can_mode_t mode, can_frame_t frame, can_baud_t baud, ca
     case _DEF_CAN1:
       /* CAN_Init 0 */
       p_can->Instance                   = CAN1;
-      p_can->Init.Prescaler             = 4;
-      p_can->Init.Mode                  = CAN_MODE_LOOPBACK;
-      p_can->Init.SyncJumpWidth         = CAN_SJW_4TQ;
-      p_can->Init.TimeSeg1              = CAN_BS1_13TQ;
-      p_can->Init.TimeSeg2              = CAN_BS2_4TQ;
+      p_can->Init.Prescaler             = p_baud_normal[baud].prescaler;//4;
+      p_can->Init.Mode                  = mode_tbl[mode];//CAN_MODE_LOOPBACK;
+      p_can->Init.SyncJumpWidth         = p_baud_normal[baud].sjw;//CAN_SJW_4TQ;
+      p_can->Init.TimeSeg1              = p_baud_normal[baud].tseg1;//CAN_BS1_13TQ
+      p_can->Init.TimeSeg2              = p_baud_normal[baud].tseg2;//CAN_BS2_4TQ
       p_can->Init.TimeTriggeredMode     = DISABLE;
       p_can->Init.AutoBusOff            = DISABLE;
       p_can->Init.AutoWakeUp            = DISABLE;
