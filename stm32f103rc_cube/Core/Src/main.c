@@ -21,10 +21,10 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "adc.h"
-#include "can.h"
 #include "rtc.h"
 #include "spi.h"
 #include "usart.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -146,7 +146,6 @@ int main(void)
   MX_RTC_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
-  MX_CAN_Init();
   MX_ADC1_Init();
   MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
@@ -311,6 +310,7 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSRC_PCLK2_DIV_6);
+  LL_RCC_SetUSBClockSource(LL_RCC_USB_CLKSOURCE_PLL_DIV_1_5);
 }
 
 /* USER CODE BEGIN 4 */
