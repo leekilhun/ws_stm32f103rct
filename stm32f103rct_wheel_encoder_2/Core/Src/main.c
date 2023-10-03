@@ -66,6 +66,31 @@ static void MX_TIM1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+volatile uint32_t encoder_cnt = 0;
+
+
+
+
+
+
+
+
+
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  encoder_cnt = __HAL_TIM_GET_COUNTER(&htim4);
+}
+
+
+
+
+
+
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -103,6 +128,9 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
+
+
+  //HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 |TIM_CHANNEL_2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -112,6 +140,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    //encoder_cnt = __HAL_TIM_GET_COUNTER(&htim4);
+
   }
   /* USER CODE END 3 */
 }
@@ -326,7 +356,7 @@ static void MX_TIM4_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
-
+  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
   /* USER CODE END TIM4_Init 2 */
 
 }

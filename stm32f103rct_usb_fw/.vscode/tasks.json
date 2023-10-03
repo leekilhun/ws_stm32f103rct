@@ -1,0 +1,27 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "configure win",
+        "type": "shell",
+        "command": "cmake -S . -B build -G 'MinGW Makefiles' "
+      },
+      {
+        "label": "build",
+        "type": "shell",
+        "command": "cmake --build build -j14"
+      },
+      {
+        "label": "clean",
+        "type": "shell",
+        "command": "cmake --build build --target clean"
+      },    
+      {
+       "label": "down_fw",
+        "type": "shell",
+        "command": "tools/jL_downloader com45 115200 fw 0x800C800 build/stm32f103rct_usb_fw.bin 1" 
+      }
+    ]
+  }

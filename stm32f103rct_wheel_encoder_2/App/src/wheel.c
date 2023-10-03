@@ -56,8 +56,9 @@ bool wheelInit()
 
   reset_encoder(&enc_instance);
 
-  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1);
-  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 |TIM_CHANNEL_2);
+  HAL_TIM_Base_Start_IT(&htim4);
+  //HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
 
   //HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1); // TIM4 채널 1 캡처 인터럽트 시작
   //HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2); // TIM4 채널 2 캡처 인터럽트 시작
@@ -136,9 +137,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   update_encoder(&enc_instance,&htim4);
   encoder_position = enc_instance.position;
   encoder_velocity = enc_instance.velocity;
-  wheelCntView();
-}
+  //wheelCntView();
 
+  HAL_TIM_Base_Start_IT(&htim4);
+  //HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_1 |TIM_CHANNEL_2);
+}
 
 /* TIM4 입력 캡처 인터럽트 핸들러 함수 */
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)

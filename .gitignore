@@ -3,7 +3,6 @@
 
 ## 다음과 같은 확장자는 전체 무시  
 *.text 
-*.exe 
 *.zip
 *.log
 *.bin
@@ -12,9 +11,16 @@
 *.fw
 
 ## 폴더 무시
-.vscode/
+stm32f103rc_cube/
+stm32f103rc_sdk_fw/
+stm32f103rct_ap/
+stm32f103rct_rtos/
+stm32f103rct_wheel_encoder/
+stm32f103rct_wheel_encoder_2/
+stm32f103rct_usb_fs/
 .vs/
 .metadata/
+build/
 Debug/
 .settings/
 Templates/

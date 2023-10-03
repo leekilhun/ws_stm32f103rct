@@ -74,11 +74,12 @@ void  apMain(void)
       //uartWrite(_DEF_CH1, text, sizeof(text));
       ledToggle(_DEF_CH1);
       //wheelCntView();
+
     }
 
 
 
-#if 0
+#if 1
     if (uartAvailable(_DEF_CH1) > 0)
     {
       uint8_t rx_data;
